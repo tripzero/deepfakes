@@ -3,6 +3,7 @@
 import time
 import numpy
 from lib.training_data import minibatchAB, stack_images
+from tensorflow.keras.utils import multi_gpu_model
 
 encoderH5 = '/encoder.h5'
 decoder_AH5 = '/decoder_A.h5'
@@ -16,6 +17,9 @@ class ModelAE:
         self.encoder = self.Encoder()
         self.decoder_A = self.Decoder()
         self.decoder_B = self.Decoder()
+
+        self.decoder_A_multi = multi_gpu_model(self.decoder_A, gpus=2)
+        self.decoder_B_multi = multi_gpu_model(self.decoder_B, gpus=2)
 
         self.initModel()
 
@@ -50,8 +54,14 @@ class TrainerAE():
         epoch, warped_A, target_A = next(self.images_A)
         epoch, warped_B, target_B = next(self.images_B)
 
-        loss_A = self.model.autoencoder_A.train_on_batch(warped_A, target_A)
-        loss_B = self.model.autoencoder_B.train_on_batch(warped_B, target_B)
+        batch_size_A = len(target_A)
+        batch_size_B = len(target_B)
+
+        loss_A = self.model.autoencoder_A_multi.fit(warped_A, target_A, batch_size=batch_size_A, epochs=1, verbose=0).history['loss'][-1]
+        loss_B = self.model.autoencoder_B_multi.fit(warped_B, target_B, batch_size=batch_size_B, epochs=1, verbose=0).history['loss'][-1]
+
+        # loss_A = self.model.autoencoder_A.train_on_batch(warped_A, target_A)
+        # loss_B = self.model.autoencoder_B.train_on_batch(warped_B, target_B)
         print("[{0}] [#{1:05d}] loss_A: {2:.5f}, loss_B: {3:.5f}".format(time.strftime("%H:%M:%S"), iter, loss_A, loss_B),
             end='\r')
 

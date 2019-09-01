@@ -2,16 +2,61 @@
 # by t-ae
 # https://gist.github.com/t-ae/6e1016cc188104d123676ccef3264981
 
-from keras.utils import conv_utils
-from keras.engine.topology import Layer
-import keras.backend as K
+from tensorflow.keras import backend
+from tensorflow.keras.layers import Layer
+import tensorflow.keras.backend as K
+
+def normalize_data_format(value):
+  if value is None:
+    value = backend.image_data_format()
+  data_format = value.lower()
+  if data_format not in {'channels_first', 'channels_last'}:
+    raise ValueError('The `data_format` argument must be one of '
+                     '"channels_first", "channels_last". Received: ' +
+                     str(value))
+  return data_format
+
+def normalize_tuple(value, n, name):
+  """Transforms a single integer or iterable of integers into an integer tuple.
+  Arguments:
+    value: The value to validate and convert. Could an int, or any iterable of
+      ints.
+    n: The size of the tuple to be returned.
+    name: The name of the argument being validated, e.g. "strides" or
+      "kernel_size". This is only used to format error messages.
+  Returns:
+    A tuple of n integers.
+  Raises:
+    ValueError: If something else than an int/long or iterable thereof was
+      passed.
+  """
+  if isinstance(value, int):
+    return (value,) * n
+  else:
+    try:
+      value_tuple = tuple(value)
+    except TypeError:
+      raise ValueError('The `' + name + '` argument must be a tuple of ' +
+                       str(n) + ' integers. Received: ' + str(value))
+    if len(value_tuple) != n:
+      raise ValueError('The `' + name + '` argument must be a tuple of ' +
+                       str(n) + ' integers. Received: ' + str(value))
+    for single_value in value_tuple:
+      try:
+        int(single_value)
+      except (ValueError, TypeError):
+        raise ValueError('The `' + name + '` argument must be a tuple of ' +
+                         str(n) + ' integers. Received: ' + str(value) + ' '
+                         'including element ' + str(single_value) + ' of type' +
+                         ' ' + str(type(single_value)))
+    return value_tuple
 
 
 class PixelShuffler(Layer):
     def __init__(self, size=(2, 2), data_format=None, **kwargs):
         super(PixelShuffler, self).__init__(**kwargs)
-        self.data_format = conv_utils.normalize_data_format(data_format)
-        self.size = conv_utils.normalize_tuple(size, 2, 'size')
+        self.data_format = normalize_data_format(data_format)
+        self.size = normalize_tuple(size, 2, 'size')
 
     def call(self, inputs):
 

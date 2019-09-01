@@ -1,10 +1,11 @@
 # Based on the original https://www.reddit.com/r/deepfakes/ code sample + contribs
 
-from keras.models import Model as KerasModel
-from keras.layers import Input, Dense, Flatten, Reshape
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import Conv2D
-from keras.optimizers import Adam
+from tensorflow.keras.models import Model as KerasModel
+from tensorflow.keras.layers import Input, Dense, Flatten, Reshape
+from tensorflow.keras.layers import LeakyReLU
+from tensorflow.keras.layers import Conv2D
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.utils import multi_gpu_model
 
 from lib.ModelAE import ModelAE, TrainerAE
 from lib.PixelShuffler import PixelShuffler
@@ -19,6 +20,15 @@ class Model(ModelAE):
 
         self.autoencoder_A = KerasModel(x, self.decoder_A(self.encoder(x)))
         self.autoencoder_B = KerasModel(x, self.decoder_B(self.encoder(x)))
+
+        try:
+            self.autoencoder_A_multi = multi_gpu_model(self.autoencoder_A, gpus=2)
+            self.autoencoder_B_multi = multi_gpu_model(self.autoencoder_B, gpus=2)
+            self.autoencoder_A_multi.compile(optimizer=optimizer, loss='mean_absolute_error')
+            self.autoencoder_B_multi.compile(optimizer=optimizer, loss='mean_absolute_error')
+        except:
+            self.autoencoder_A_multi = self.autoencoder_A
+            self.autoencoder_B_multi = self.autoencoder_A
 
         self.autoencoder_A.compile(optimizer=optimizer, loss='mean_absolute_error')
         self.autoencoder_B.compile(optimizer=optimizer, loss='mean_absolute_error')
